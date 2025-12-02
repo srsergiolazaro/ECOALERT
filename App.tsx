@@ -12,6 +12,9 @@ import EcoTachosView from './components/EcoTachosView';
 import LocationSearch from './components/LocationSearch';
 import { AnimatePresence, motion } from 'framer-motion';
 
+// URL de sonido de notificación suave
+const ALERT_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+
 const App: React.FC = () => {
   // --- STATE ---
   const [user, setUser] = useState<User | null>(null);
@@ -32,12 +35,48 @@ const App: React.FC = () => {
   // Simulation State
   const [simulatingMovement, setSimulatingMovement] = useState(false);
   
+  // Audio Ref
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   // Ref para controlar notificaciones enviadas en el ciclo actual
   const sentNotifications = useRef({
     longRange: false,
     mediumRange: false,
-    arrival: false
+    arrival: false,
+    movementStarted: false
   });
+
+  // --- INITIALIZE AUDIO & PERMISSIONS ---
+  useEffect(() => {
+    audioRef.current = new Audio(ALERT_SOUND_URL);
+    
+    // Solicitar permiso para Notificaciones Nativas del Navegador
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const playAlertSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.log("Audio play failed (interaction needed)", e));
+      
+      // Vibrar si es posible (200ms)
+      if (navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+    }
+  };
+
+  const sendNativeNotification = (title: string, body: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body: body,
+        icon: '/vite.svg', // Icono genérico por ahora
+        vibrate: [200, 100, 200]
+      } as any);
+    }
+  };
 
   // --- HANDLERS ---
 
@@ -100,6 +139,7 @@ const App: React.FC = () => {
             lastUpdate: Date.now()
          });
          setSimulatingMovement(false); // Pausar para evitar saltos raros
+         sentNotifications.current.movementStarted = false;
        }
     }
 
@@ -128,6 +168,11 @@ const App: React.FC = () => {
 
   const triggerNotification = useCallback((note: Notification) => {
     setNotification(note);
+    // Reproducir sonido para cualquier notificación importante
+    if (note.type === 'warning' || note.type === 'success') {
+       playAlertSound();
+       sendNativeNotification(note.title, note.message);
+    }
   }, []);
 
   // --- SIMULATION EFFECT ---
@@ -137,6 +182,19 @@ const App: React.FC = () => {
 
     if (simulatingMovement && activeRoute) {
       const path = activeRoute.path;
+
+      // Alerta de inicio de movimiento (Solo una vez)
+      if (!sentNotifications.current.movementStarted) {
+         triggerNotification({
+            id: 'start_' + Date.now(),
+            title: 'Ruta Iniciada',
+            message: `El camión de ${activeRoute.name} ha comenzado su recorrido.`,
+            type: 'info',
+            timestamp: Date.now()
+         });
+         playAlertSound(); // Sonido al iniciar
+         sentNotifications.current.movementStarted = true;
+      }
       
       interval = setInterval(() => {
         setTruck(currentTruck => {
@@ -153,7 +211,7 @@ const App: React.FC = () => {
           if (nextIndex >= path.length) {
             nextIndex = 0; 
             // Reset notificaciones al reiniciar ciclo
-            sentNotifications.current = { longRange: false, mediumRange: false, arrival: false };
+            sentNotifications.current = { longRange: false, mediumRange: false, arrival: false, movementStarted: true };
           }
 
           const nextLocation = path[nextIndex];
@@ -171,10 +229,15 @@ const App: React.FC = () => {
           };
         });
       }, 3000); // Actualiza cada 3 segundos
+    } else {
+       // Si se detiene la simulación
+       if (!simulatingMovement) {
+          sentNotifications.current.movementStarted = false;
+       }
     }
 
     return () => clearInterval(interval);
-  }, [simulatingMovement, activeRoute, user?.role]);
+  }, [simulatingMovement, activeRoute, user?.role, triggerNotification]);
 
 
   // --- NOTIFICATION LOGIC ---
