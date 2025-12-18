@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { MapPin, Truck as TruckIcon, Settings, Navigation, Bell, ShoppingBag, Save, LogOut } from 'lucide-react';
-import { User, UserRole, Truck, Notification, WasteRoute, Coordinates } from './types';
+import { MapPin, Truck as TruckIcon, Settings, Navigation, Bell, ShoppingBag, Save, LogOut, CheckCircle } from 'lucide-react';
+import { User, UserRole, Truck, AppNotification, WasteRoute, Coordinates } from './types';
 import { HUANCAYO_ROUTES, NOTIFICATION_THRESHOLDS } from './constants';
 import { calculateDistance } from './services/geoService';
 import MapView from './components/MapView';
@@ -12,6 +12,9 @@ import EcoTachosView from './components/EcoTachosView';
 import LocationSearch from './components/LocationSearch';
 import { AnimatePresence, motion } from 'framer-motion';
 
+// URL de sonido de notificación suave
+const ALERT_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+
 const App: React.FC = () => {
   // --- STATE ---
   const [user, setUser] = useState<User | null>(null);
@@ -19,24 +22,74 @@ const App: React.FC = () => {
   
   const [truck, setTruck] = useState<Truck | null>(null);
   const [activeRoute, setActiveRoute] = useState<WasteRoute | null>(null);
-  const [notification, setNotification] = useState<Notification | null>(null);
+  const [notification, setNotification] = useState<AppNotification | null>(null);
   
+  // Estado para controlar si el usuario ya entregó su basura
+  const [trashDelivered, setTrashDelivered] = useState(false);
+
   // Estado local para edición de configuración (Settings)
   const [tempSettings, setTempSettings] = useState({
     thresholdLong: NOTIFICATION_THRESHOLDS.LONG_RANGE.toString(),
     thresholdMedium: NOTIFICATION_THRESHOLDS.MEDIUM_RANGE.toString(),
-    thresholdClose: NOTIFICATION_THRESHOLDS.ARRIVAL.toString()
+    thresholdClose: NOTIFICATION_THRESHOLDS.ARRIVAL.toString(),
+    routeId: '' // Agregado para modificar zona
   });
   
   // Simulation State
   const [simulatingMovement, setSimulatingMovement] = useState(false);
   
+  // Audio Ref
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   // Ref para controlar notificaciones enviadas en el ciclo actual
   const sentNotifications = useRef({
     longRange: false,
     mediumRange: false,
-    arrival: false
+    arrival: false,
+    movementStarted: false
   });
+
+  // --- INITIALIZE AUDIO & PERMISSIONS ---
+  useEffect(() => {
+    audioRef.current = new Audio(ALERT_SOUND_URL);
+    
+    // Solicitar permiso para Notificaciones Nativas del Navegador
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const playAlertSound = () => {
+    // Si ya entregó la basura, no reproducir sonido
+    if (trashDelivered) return;
+
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(e => console.log("Audio play failed (interaction needed)", e));
+      
+      // Vibrar si es posible (200ms)
+      if (navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+    }
+  };
+
+  const stopAlertSound = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  const sendNativeNotification = (title: string, body: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body: body,
+        icon: '/vite.svg', // Icono genérico por ahora
+        vibrate: [200, 100, 200]
+      } as any);
+    }
+  };
 
   // --- HANDLERS ---
 
@@ -48,7 +101,8 @@ const App: React.FC = () => {
       setTempSettings({
         thresholdLong: loggedInUser.notificationSettings.thresholdLong.toString(),
         thresholdMedium: loggedInUser.notificationSettings.thresholdMedium.toString(),
-        thresholdClose: loggedInUser.notificationSettings.thresholdClose.toString()
+        thresholdClose: loggedInUser.notificationSettings.thresholdClose.toString(),
+        routeId: loggedInUser.routeId || ''
       });
     }
 
@@ -69,9 +123,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleTrashDelivered = () => {
+    setTrashDelivered(true);
+    setSimulatingMovement(false); // Detener el camión
+    stopAlertSound(); // Silenciar inmediatamente
+    
+    triggerNotification({
+      id: 'delivered_' + Date.now(),
+      title: '¡Basura Entregada!',
+      message: 'El camión se ha detenido y las alertas se han silenciado.',
+      type: 'success',
+      timestamp: Date.now()
+    });
+  };
+
   const handleSaveSettings = () => {
     if (!user || !user.notificationSettings) return;
 
+    // Actualizar configuración numérica
     const newSettings = {
       ...user.notificationSettings,
       thresholdLong: parseInt(tempSettings.thresholdLong) || 1000,
@@ -79,12 +148,35 @@ const App: React.FC = () => {
       thresholdClose: parseInt(tempSettings.thresholdClose) || 50,
     };
 
-    setUser({ ...user, notificationSettings: newSettings });
+    // Actualizar Ruta Activa si cambió
+    let updatedRouteId = user.routeId;
+    if (tempSettings.routeId && tempSettings.routeId !== user.routeId) {
+       updatedRouteId = tempSettings.routeId;
+       const newRoute = HUANCAYO_ROUTES.find(r => r.id === tempSettings.routeId);
+       setActiveRoute(newRoute || null);
+       
+       // Reiniciar camión simulado para la nueva ruta
+       if (newRoute) {
+         setTruck({
+            id: 't_sim_new',
+            routeId: newRoute.id,
+            driverName: 'Conductor Asignado',
+            location: newRoute.path[0],
+            isMoving: false,
+            lastUpdate: Date.now()
+         });
+         setSimulatingMovement(false); // Pausar para evitar saltos raros
+         setTrashDelivered(false); // Resetear estado de entrega
+         sentNotifications.current.movementStarted = false;
+       }
+    }
+
+    setUser({ ...user, notificationSettings: newSettings, routeId: updatedRouteId });
     
     triggerNotification({
       id: Date.now().toString(),
       title: 'Configuración Guardada',
-      message: 'Las distancias de alerta han sido actualizadas.',
+      message: 'Preferencias y zona actualizadas correctamente.',
       type: 'success',
       timestamp: Date.now()
     });
@@ -102,9 +194,17 @@ const App: React.FC = () => {
     });
   };
 
-  const triggerNotification = useCallback((note: Notification) => {
+  const triggerNotification = useCallback((note: AppNotification) => {
     setNotification(note);
-  }, []);
+    // Reproducir sonido para cualquier notificación importante
+    if (note.type === 'warning' || note.type === 'success') {
+       // Solo sonar si NO se ha entregado la basura (excepto si es la confirmación de entrega)
+       if (note.title !== '¡Basura Entregada!') {
+          playAlertSound();
+       }
+       sendNativeNotification(note.title, note.message);
+    }
+  }, [trashDelivered]); // Dependencia trashDelivered importante
 
   // --- SIMULATION EFFECT ---
   // Este efecto mueve el camión a lo largo de los puntos de la ruta seleccionada
@@ -113,6 +213,20 @@ const App: React.FC = () => {
 
     if (simulatingMovement && activeRoute) {
       const path = activeRoute.path;
+
+      // Alerta de inicio de movimiento (Solo una vez)
+      if (!sentNotifications.current.movementStarted) {
+         triggerNotification({
+            id: 'start_' + Date.now(),
+            title: 'Ruta Iniciada',
+            message: `El camión de ${activeRoute.name} ha comenzado su recorrido.`,
+            type: 'info',
+            timestamp: Date.now()
+         });
+         // Solo sonar si no ha entregado basura
+         if (!trashDelivered) playAlertSound(); 
+         sentNotifications.current.movementStarted = true;
+      }
       
       interval = setInterval(() => {
         setTruck(currentTruck => {
@@ -129,7 +243,9 @@ const App: React.FC = () => {
           if (nextIndex >= path.length) {
             nextIndex = 0; 
             // Reset notificaciones al reiniciar ciclo
-            sentNotifications.current = { longRange: false, mediumRange: false, arrival: false };
+            sentNotifications.current = { longRange: false, mediumRange: false, arrival: false, movementStarted: true };
+            // Resetear el estado de basura entregada para el "siguiente día/vuelta"
+            setTrashDelivered(false);
           }
 
           const nextLocation = path[nextIndex];
@@ -147,14 +263,22 @@ const App: React.FC = () => {
           };
         });
       }, 3000); // Actualiza cada 3 segundos
+    } else {
+       // Si se detiene la simulación
+       if (!simulatingMovement) {
+          sentNotifications.current.movementStarted = false;
+       }
     }
 
     return () => clearInterval(interval);
-  }, [simulatingMovement, activeRoute, user?.role]);
+  }, [simulatingMovement, activeRoute, user?.role, triggerNotification, trashDelivered]);
 
 
   // --- NOTIFICATION LOGIC ---
   useEffect(() => {
+    // Si ya entregó la basura, no procesar alertas de distancia
+    if (trashDelivered) return;
+
     // Solo ciudadanos reciben alertas
     if (user?.role !== UserRole.CITIZEN || !truck || !user.location || !user.notificationSettings?.enabled) return;
 
@@ -198,7 +322,7 @@ const App: React.FC = () => {
       sentNotifications.current.longRange = true;
     }
 
-  }, [truck, user, triggerNotification]);
+  }, [truck, user, triggerNotification, trashDelivered]);
 
 
   // --- RENDER ---
@@ -259,17 +383,14 @@ const App: React.FC = () => {
     );
   }
 
-  // --- VISTA CIUDADANO (LAYOUT CORREGIDO) ---
+  // --- VISTA CIUDADANO (LAYOUT FLEX COLUMN) ---
+  // Estructura: [Contenido Flexible (Scroll)] + [Nav Fixed Size (No Scroll)]
   return (
-    // CONTENEDOR PRINCIPAL: Relativo para contener elementos absolutos
-    <div className="relative w-full h-full bg-slate-50 overflow-hidden">
+    <div className="flex flex-col h-[100dvh] w-full bg-slate-50 overflow-hidden">
       <NotificationToast notification={notification} onDismiss={() => setNotification(null)} />
       
-      {/* AREA DE CONTENIDO PRINCIPAL 
-          Usamos pb-20 (padding bottom 5rem) para asegurar que NADA quede detrás del menú
-          Usamos h-full y overflow-y-auto para que el scroll sea interno
-      */}
-      <main className="w-full h-full overflow-y-auto pb-24 bg-slate-50">
+      {/* AREA DE CONTENIDO PRINCIPAL: Toma todo el espacio restante */}
+      <main className="flex-1 w-full overflow-y-auto relative bg-slate-50 scroll-smooth">
         <AnimatePresence mode="wait">
           
           {/* --- MAP TAB --- */}
@@ -279,19 +400,22 @@ const App: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full h-full relative" // El mapa toma el 100% del contenedor padre (que ya tiene padding bottom)
+              className="w-full h-full relative min-h-full" 
             >
               <div className="absolute top-0 left-0 right-0 p-4 pt-safe z-10 pointer-events-none">
                   <Card className="bg-white/95 backdrop-blur pointer-events-auto flex items-center justify-between shadow-lg border-0">
                      {truck && activeRoute ? (
                        <div className="flex items-center gap-3">
-                         <div className="bg-emerald-100 p-2 rounded-full animate-pulse">
-                           <TruckIcon className="text-emerald-600" size={20} />
+                         <div className={`p-2 rounded-full ${trashDelivered ? 'bg-slate-100' : 'bg-emerald-100 animate-pulse'}`}>
+                           <TruckIcon className={trashDelivered ? 'text-slate-400' : 'text-emerald-600'} size={20} />
                          </div>
                          <div>
                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{activeRoute.name}</p>
                            <p className="font-bold text-slate-800 text-sm">
-                             A {calculateDistance(user.location!, truck.location).toFixed(0)}m de casa
+                             {trashDelivered 
+                               ? 'Recolección Completada' 
+                               : `A ${calculateDistance(user.location!, truck.location).toFixed(0)}m de casa`
+                             }
                            </p>
                          </div>
                        </div>
@@ -306,27 +430,63 @@ const App: React.FC = () => {
                   </Card>
               </div>
 
-              {/* El mapa es absolute inset-0 DENTRO del main, pero como el main tiene padding-bottom,
-                  necesitamos que el mapa "escape" de ese padding o ajustamos el contenedor. 
-                  En este caso, para MapView, queremos que ocupe todo el espacio visible menos el footer.
-              */}
               <div className="absolute inset-0 z-0 h-full w-full">
                  <MapView 
                    userLocation={user.location!} 
                    truck={truck}
                    role={UserRole.CITIZEN} 
-                   onTruckClick={() => setSimulatingMovement(true)}
+                   onTruckClick={() => {
+                     if (!trashDelivered) {
+                       setSimulatingMovement(true);
+                     }
+                   }}
                   />
               </div>
               
-              {/* Botón Flotante Simulación */}
-              <div className="absolute bottom-6 right-4 z-[400]">
-                 <button 
-                   onClick={() => setSimulatingMovement(!simulatingMovement)}
-                   className={`p-4 rounded-full shadow-xl border-2 transition-all ${simulatingMovement ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
-                 >
-                   <Navigation size={24} className={simulatingMovement ? 'animate-pulse' : ''} />
-                 </button>
+              {/* BOTONES FLOTANTES */}
+              <div className="absolute bottom-6 left-0 right-0 px-4 z-[400] flex items-end justify-between pointer-events-none">
+                 
+                 {/* BOTÓN YA ENTREGUE (IZQUIERDA/CENTRO) */}
+                 <div className="pointer-events-auto flex-1 mr-4">
+                   {activeRoute && truck && (
+                     !trashDelivered ? (
+                       <Button 
+                        onClick={handleTrashDelivered}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl border-2 border-white w-full flex items-center justify-center gap-2 animate-bounce-slight"
+                       >
+                         <CheckCircle size={20} /> Ya entregué mi basura
+                       </Button>
+                     ) : (
+                       <div className="bg-white/90 backdrop-blur text-emerald-700 px-4 py-3 rounded-xl font-bold text-sm shadow-lg border border-emerald-100 text-center flex items-center justify-center gap-2">
+                          <CheckCircle size={18} className="fill-emerald-100" /> ¡Listo! Alertas silenciadas.
+                       </div>
+                     )
+                   )}
+                 </div>
+
+                 {/* BOTÓN SIMULACIÓN (DERECHA) */}
+                 <div className="pointer-events-auto">
+                    <button 
+                      onClick={() => {
+                        if (trashDelivered) {
+                           setTrashDelivered(false);
+                           setSimulatingMovement(true);
+                           triggerNotification({
+                              id: 'reset_' + Date.now(),
+                              title: 'Simulación Reiniciada',
+                              message: 'Has reactivado las alertas.',
+                              type: 'info',
+                              timestamp: Date.now()
+                           });
+                        } else {
+                           setSimulatingMovement(!simulatingMovement);
+                        }
+                      }}
+                      className={`p-3 rounded-full shadow-xl border-2 transition-all ${simulatingMovement ? 'bg-amber-500 border-amber-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                    >
+                      <Navigation size={24} className={simulatingMovement ? 'animate-pulse' : ''} />
+                    </button>
+                 </div>
               </div>
             </motion.div>
           )}
@@ -351,7 +511,7 @@ const App: React.FC = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="p-6 space-y-6 pt-safe"
+              className="p-6 space-y-6 pt-safe pb-safe"
             >
               <h2 className="text-2xl font-bold text-slate-800">Mi Perfil</h2>
               
@@ -384,10 +544,16 @@ const App: React.FC = () => {
                  </div>
                  
                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <p className="text-xs text-slate-400 font-bold uppercase mb-1">Zona / Barrio</p>
-                    <p className="text-sm font-bold text-slate-700">
-                      {activeRoute?.name || 'Zona no identificada'}
-                    </p>
+                    <p className="text-xs text-slate-400 font-bold uppercase mb-2">Zona / Barrio</p>
+                    <select
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none"
+                      value={tempSettings.routeId}
+                      onChange={(e) => setTempSettings({...tempSettings, routeId: e.target.value})}
+                    >
+                       {HUANCAYO_ROUTES.map(route => (
+                         <option key={route.id} value={route.id}>{route.name}</option>
+                       ))}
+                    </select>
                  </div>
               </Card>
 
@@ -432,11 +598,11 @@ const App: React.FC = () => {
         </AnimatePresence>
       </main>
 
-      {/* --- BOTTOM NAV (FIXED ABSOLUTE POSITION) --- 
-          Usamos fixed bottom-0 para anclarlo a la ventana visual del navegador.
-          Esto sobrevive al scroll y a cambios de viewport.
+      {/* --- BOTTOM NAV (BLOCK ELEMENT, NOT FIXED) --- 
+          Al estar dentro de un flex-col que ocupa el 100% de la pantalla,
+          este nav siempre estará al fondo visible. shrink-0 evita que se aplaste.
       */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-[1000]">
+      <nav className="h-16 shrink-0 bg-white border-t border-slate-200 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-50 relative pb-safe">
         <div className="flex justify-around items-center h-full max-w-md mx-auto">
           <button 
             onClick={() => setActiveTab('map')}

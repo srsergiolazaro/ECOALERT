@@ -25,28 +25,35 @@ export const HUANCAYO_LANDMARKS = [
   { name: "Parque Tupac Amaru", address: "San Carlos", lat: -12.0620, lng: -75.2020 },
   { name: "Colegio Salesiano", address: "San Carlos", lat: -12.0650, lng: -75.2060 },
   { name: "Municipalidad de El Tambo", address: "Av. Mariscal Castilla", lat: -12.0550, lng: -75.2150 },
+  { name: "Justicia Paz y Vida", address: "El Tambo Sector Norte", lat: -12.0305, lng: -75.2250 },
+  { name: "Parque de los Sombreros", address: "El Tambo", lat: -12.0510, lng: -75.2120 },
+  { name: "Parque Peñaloza", address: "Chilca", lat: -12.0790, lng: -75.2160 },
 ];
 
-// --- RUTAS DE HUANCAYO ---
+// --- RUTAS DE HUANCAYO (AMPLIADAS) ---
 
-const RUTA_PALIAN: Coordinates[] = [
+// Ruta 1: Este -> Centro
+const RUTA_PALIAN_SAN_CARLOS: Coordinates[] = [
   { lat: -12.0505, lng: -75.1850 }, // Palián (UPLA)
-  { lat: -12.0540, lng: -75.1900 }, // Av. San Carlos Alta
-  { lat: -12.0580, lng: -75.1960 }, // San Carlos Media
+  { lat: -12.0540, lng: -75.1900 }, // Cooperativa Santa Isabel
+  { lat: -12.0580, lng: -75.1960 }, // San Carlos
   { lat: -12.0620, lng: -75.2020 }, // Parque Tupac
   { lat: -12.0650, lng: -75.2060 }, // Colegio Salesiano
   { lat: -12.0681, lng: -75.2106 }, // Centro
 ];
 
-const RUTA_EL_TAMBO: Coordinates[] = [
-  { lat: -12.0420, lng: -75.2250 }, // Estadio Castilla
+// Ruta 2: Norte -> Centro (Eje Principal)
+const RUTA_EL_TAMBO_PRINCIPAL: Coordinates[] = [
+  { lat: -12.0420, lng: -75.2250 }, // Ciudad Universitaria (UNCP)
   { lat: -12.0480, lng: -75.2200 }, // Av. Mariscal Castilla
-  { lat: -12.0550, lng: -75.2150 }, // El Tambo Centro
+  { lat: -12.0520, lng: -75.2180 }, // El Tambo (Mun)
+  { lat: -12.0550, lng: -75.2150 }, // Parque Bolognesi
   { lat: -12.0600, lng: -75.2120 }, // Bajando a Huancayo
   { lat: -12.0681, lng: -75.2106 }, // Centro
 ];
 
-const RUTA_CHILCA: Coordinates[] = [
+// Ruta 3: Sur -> Centro (Eje Principal)
+const RUTA_CHILCA_CENTRO: Coordinates[] = [
   { lat: -12.0900, lng: -75.2200 }, // Chilca Alta
   { lat: -12.0850, lng: -75.2180 }, // Av. 9 de Diciembre
   { lat: -12.0780, lng: -75.2150 }, // Cerca al Cuartel
@@ -54,10 +61,46 @@ const RUTA_CHILCA: Coordinates[] = [
   { lat: -12.0681, lng: -75.2106 }, // Centro
 ];
 
+// Ruta 4: Chilca Este (Ocopilla)
+const RUTA_OCOPILLA: Coordinates[] = [
+  { lat: -12.0800, lng: -75.2050 }, // Ocopilla Alta
+  { lat: -12.0750, lng: -75.2080 }, // Próceres
+  { lat: -12.0700, lng: -75.2100 }, // Cerca al Estadio
+  { lat: -12.0681, lng: -75.2106 }, // Centro
+];
+
+// Ruta 5: El Tambo Noroeste (Justicia)
+const RUTA_JUSTICIA: Coordinates[] = [
+  { lat: -12.0250, lng: -75.2300 }, // Justicia Paz y Vida
+  { lat: -12.0350, lng: -75.2250 }, // Asentamiento Humano
+  { lat: -12.0450, lng: -75.2200 }, // Evitamiento
+  { lat: -12.0550, lng: -75.2150 }, // Empalme El Tambo
+];
+
+// Ruta 6: San Antonio / Pio Pata
+const RUTA_SAN_ANTONIO: Coordinates[] = [
+  { lat: -12.0450, lng: -75.2100 }, // San Antonio
+  { lat: -12.0500, lng: -75.2080 }, // Parque de la Identidad
+  { lat: -12.0550, lng: -75.2050 }, // Pio Pata
+  { lat: -12.0600, lng: -75.2080 }, // Cerca al Open Plaza
+  { lat: -12.0650, lng: -75.2100 }, // Ferrocarril
+];
+
+// Ruta 7: Azapampa (Sur Profundo)
+const RUTA_AZAPAMPA: Coordinates[] = [
+  { lat: -12.1050, lng: -75.2250 }, // Azapampa
+  { lat: -12.0950, lng: -75.2220 }, // Auquimarca
+  { lat: -12.0900, lng: -75.2200 }, // Empalme Chilca
+];
+
 export const HUANCAYO_ROUTES: WasteRoute[] = [
-  { id: 'r1', name: 'Ruta 1: Palián -> Centro', description: 'Cubre San Carlos y alrededores', path: RUTA_PALIAN },
-  { id: 'r2', name: 'Ruta 2: El Tambo -> Centro', description: 'Av. Mariscal Castilla y transversales', path: RUTA_EL_TAMBO },
-  { id: 'r3', name: 'Ruta 3: Chilca -> Centro', description: 'Zona Sur, Calle Real', path: RUTA_CHILCA },
+  { id: 'r1', name: 'Ruta 1: Palián - San Carlos', description: 'UPLA, San Carlos, Colegio Salesiano', path: RUTA_PALIAN_SAN_CARLOS },
+  { id: 'r2', name: 'Ruta 2: El Tambo - UNCP', description: 'Av. Mariscal Castilla, Parque Bolognesi', path: RUTA_EL_TAMBO_PRINCIPAL },
+  { id: 'r3', name: 'Ruta 3: Chilca - Calle Real', description: 'Av. 9 de Diciembre, Calle Real Sur', path: RUTA_CHILCA_CENTRO },
+  { id: 'r4', name: 'Ruta 4: Ocopilla - Estadio', description: 'Zona Este de Chilca, Próceres', path: RUTA_OCOPILLA },
+  { id: 'r5', name: 'Ruta 5: Justicia Paz y Vida', description: 'El Tambo Norte, Evitamiento', path: RUTA_JUSTICIA },
+  { id: 'r6', name: 'Ruta 6: San Antonio - Pio Pata', description: 'Parque Identidad, Open Plaza', path: RUTA_SAN_ANTONIO },
+  { id: 'r7', name: 'Ruta 7: Azapampa - Auquimarca', description: 'Zona Sur Profundo', path: RUTA_AZAPAMPA },
 ];
 
 // Umbrales de notificación por defecto (en metros)
@@ -68,6 +111,7 @@ export const NOTIFICATION_THRESHOLDS = {
 };
 
 // --- DATA SEMILLA: ECO TACHOS ---
+// Imágenes actualizadas con TACHOS REALES
 export const ECO_TACHOS_DATA: EcoTacho[] = [
   {
     id: 't1',
@@ -75,50 +119,40 @@ export const ECO_TACHOS_DATA: EcoTacho[] = [
     tipo: 'Domiciliario',
     capacidadLitros: 120,
     casasSugeridas: '3–5 viviendas',
-    precioMin: 180,
-    precioMax: 250,
+    precioMin: 100, 
+    precioMax: 120,
     moneda: 'PEN',
-    descripcion: 'Tacho plástico con ruedas, ideal para pequeñas cuadras o pasajes. Resistente, fácil de mover y adecuado para residuos diarios.',
+    descripcion: 'Tacho plástico gris con ruedas, ideal para pequeñas cuadras o pasajes. Resistente, fácil de mover y adecuado para residuos diarios.',
     beneficios: ['Fácil transporte', 'Tapa hermética anti-olores', 'Material reciclado'],
-    activo: true
+    activo: true,
+    image: 'https://promart.vteximg.com.br/arquivos/ids/703444-1000-1000/image-b0b2e3e5c9b74052968843c088926217.jpg' // Tacho gris estándar
   },
   {
     id: 't2',
     nombre: 'Contenedor Comunitario Móvil',
     tipo: 'Comunitario',
-    capacidadLitros: 240,
-    casasSugeridas: '8–12 viviendas',
-    precioMin: 280,
-    precioMax: 400,
+    capacidadLitros: 660, 
+    casasSugeridas: '20–30 viviendas',
+    precioMin: 200, 
+    precioMax: 280,
     moneda: 'PEN',
-    descripcion: 'Tacho comunitario de mayor capacidad para colocarse en esquinas estratégicas. Reduce la cantidad de bolsas dispersas en la vía pública.',
-    beneficios: ['Alta visibilidad', 'Ruedas reforzadas', 'Pedal de apertura'],
-    activo: true
+    descripcion: 'Contenedor comunitario de alta capacidad con 4 ruedas para colocarse en esquinas estratégicas. Reduce la cantidad de bolsas dispersas.',
+    beneficios: ['Alta visibilidad', '4 Ruedas reforzadas', 'Tapa plana'],
+    activo: true,
+    image: 'https://contenedoresdebasura.com.mx/wp-content/uploads/2019/04/CONTENEDOR-660-LITROS-GRIS.jpg' // Contenedor grande 4 ruedas
   },
   {
     id: 't3',
-    nombre: 'Contenedor Metálico Urbano',
-    tipo: 'Comunitario',
-    capacidadLitros: 660,
-    casasSugeridas: '20–30 viviendas',
-    precioMin: 1500,
-    precioMax: 3000,
-    moneda: 'PEN',
-    descripcion: 'Contenedor metálico de alta capacidad, ideal para barrios con alto volumen de residuos. Soporta uso intensivo.',
-    beneficios: ['Anti-vandálico', 'Ignífugo (resistente al fuego)', 'Vaciado mecanizado'],
-    activo: true
-  },
-  {
-    id: 't4',
-    nombre: 'Punto Verde Modular (Set x3)',
+    nombre: 'Punto Verde Modular (Set de 3)', 
     tipo: 'Punto Verde',
-    capacidadLitros: 120,
+    capacidadLitros: 360, // 120L x 3
     casasSugeridas: 'Condominios o Parques',
-    precioMin: 800,
-    precioMax: 1500,
+    precioMin: 500, 
+    precioMax: 600,
     moneda: 'PEN',
-    descripcion: 'Conjunto de tres tachos identificados por color para separación de residuos: Orgánicos, Reciclables y No Aprovechables.',
-    beneficios: ['Fomenta el reciclaje', 'Colores normados', 'Base estable'],
-    activo: true
+    descripcion: 'Estación de reciclaje completa. Conjunto de tres contenedores identificados por color para separación de residuos: Orgánicos, Reciclables y No Aprovechables.',
+    beneficios: ['Fomenta el reciclaje', 'Colores normados', 'Estructura sólida'],
+    activo: true,
+    image: 'https://acdn.mitiendanube.com/stores/968/562/products/estacion-ambiental-3-cestos1-0072d62757279316d815949168128384-640-0.jpg' // Set reciclaje 3 colores
   }
 ];

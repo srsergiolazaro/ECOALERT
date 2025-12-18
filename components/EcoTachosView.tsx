@@ -3,21 +3,14 @@ import React, { useState } from 'react';
 import { EcoTacho } from '../types';
 import { ECO_TACHOS_DATA } from '../constants';
 import { Card, Button } from './Button';
-import { Info, ShoppingBag, Users, ChevronLeft, ArrowRightCircle, MessageCircle } from 'lucide-react';
+import { Info, ShoppingBag, Users, ChevronLeft, ArrowRightCircle, ExternalLink } from 'lucide-react';
 
 const EcoTachosView: React.FC = () => {
   const [selectedTacho, setSelectedTacho] = useState<EcoTacho | null>(null);
 
-  // --- BOTÓN WHATSAPP ---
-  const handleWhatsappRedirect = () => {
-    // Número y mensaje especificado en los requerimientos
-    const phoneNumber = "51925285046";
-    const message = encodeURIComponent("estoy interesado en alguno de los tachos");
-    
-    // Construcción de la URL
-    const url = `https://wa.me/${phoneNumber}?text=${message}`;
-    
-    // Abrir en nueva pestaña
+  // --- REDIRECCIÓN A TIENDA ---
+  const handleShopRedirect = () => {
+    const url = "https://shop-eco-delta.vercel.app/";
     window.open(url, '_blank');
   };
 
@@ -38,9 +31,18 @@ const EcoTachosView: React.FC = () => {
             <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
               HUANCAYO
             </div>
-            <div className="w-32 h-32 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-6xl shadow-inner">
-              {selectedTacho.tipo === 'Punto Verde' ? '♻️' : '🗑️'}
-            </div>
+            {selectedTacho.image ? (
+               <img 
+                 src={selectedTacho.image} 
+                 alt={selectedTacho.nombre}
+                 className="w-48 h-48 mx-auto object-contain drop-shadow-xl mb-4" 
+               />
+            ) : (
+              <div className="w-32 h-32 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-6xl shadow-inner">
+                {selectedTacho.tipo === 'Punto Verde' ? '♻️' : '🗑️'}
+              </div>
+            )}
+            
             <h1 className="text-2xl font-bold text-slate-800 mb-1 leading-tight">{selectedTacho.nombre}</h1>
             <span className="inline-block mt-2 bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full font-medium border border-slate-200">
               {selectedTacho.tipo}
@@ -86,11 +88,11 @@ const EcoTachosView: React.FC = () => {
 
         {/* CTA Button */}
         <div className="p-4 bg-white border-t border-slate-200 pb-safe">
-          <Button fullWidth onClick={handleWhatsappRedirect} className="bg-[#25D366] hover:bg-[#128C7E] border-none text-white shadow-lg shadow-green-100 py-4">
-            <MessageCircle className="mr-2" size={24}/> Crear Campaña Vecinal
+          <Button fullWidth onClick={handleShopRedirect} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 py-4">
+            <ShoppingBag className="mr-2" size={24}/> Crear Campaña Vecinal
           </Button>
           <p className="text-[10px] text-center text-slate-400 mt-2">
-            Te contactaremos vía WhatsApp para coordinar.
+            Serás redirigido a nuestra tienda oficial para ver opciones.
           </p>
         </div>
       </div>
@@ -114,8 +116,12 @@ const EcoTachosView: React.FC = () => {
             onClick={() => setSelectedTacho(tacho)}
             className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform cursor-pointer flex gap-4 group hover:border-emerald-200"
           >
-            <div className="w-24 h-24 bg-slate-50 rounded-xl flex-shrink-0 flex items-center justify-center text-4xl group-hover:bg-emerald-50 transition-colors">
-              {tacho.tipo === 'Punto Verde' ? '♻️' : '🗑️'}
+             <div className="w-24 h-24 bg-slate-50 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden group-hover:bg-emerald-50 transition-colors">
+              {tacho.image ? (
+                <img src={tacho.image} alt={tacho.nombre} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl">{tacho.tipo === 'Punto Verde' ? '♻️' : '🗑️'}</span>
+              )}
             </div>
             
             <div className="flex-1 py-1">

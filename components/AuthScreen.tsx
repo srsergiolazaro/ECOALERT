@@ -158,7 +158,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                   <input 
                     type="text" 
                     placeholder="Nombre Completo" 
-                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none ${error && !name ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
@@ -172,7 +172,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                   <input 
                     type="tel" 
                     placeholder="Número de Celular" 
-                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none ${error && phone.length < 9 ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g,''))}
                   />
@@ -186,7 +186,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                   <input 
                     type={showPassword ? "text" : "password"} 
                     placeholder="Contraseña" 
-                    className="w-full pl-10 pr-12 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none ${error && !password ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -207,7 +207,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                   <input 
                     type="password" 
                     placeholder="Confirmar Contraseña" 
-                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none ${error && password !== confirmPassword ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
@@ -223,7 +223,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                    <div className="relative">
                       <Navigation className="absolute left-3 top-3 text-slate-400" size={20} />
                       <select
-                        className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white appearance-none"
+                        className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white appearance-none ${error && !selectedRouteId ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
                         value={selectedRouteId}
                         onChange={(e) => setSelectedRouteId(e.target.value)}
                       >
@@ -236,7 +236,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 </div>
               )}
 
-              {error && <p className="text-red-500 text-xs font-medium bg-red-50 p-2 rounded text-center">{error}</p>}
+              {error && <p className="text-red-500 text-xs font-medium bg-red-50 p-2 rounded text-center animate-pulse">{error}</p>}
 
               <Button fullWidth onClick={handleAuthAction} disabled={loading} size="lg">
                 {loading ? 'Cargando...' : mode === 'LOGIN' ? 'Ingresar' : mode === 'REGISTER' ? 'Registrarme' : 'Iniciar Ruta'}
@@ -301,8 +301,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
               <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">- O -</div>
 
-              <Button fullWidth onClick={handleForceHuancayo}>
-                <MapPinned size={18} /> Usar Ubicación Demo (Huancayo)
+              <Button fullWidth onClick={handleForceHuancayo} disabled={loading}>
+                 {loading ? (
+                   <span className="flex items-center gap-2">
+                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                     Cargando...
+                   </span>
+                 ) : (
+                   <>
+                     <MapPinned size={18} /> Usar Ubicación Demo (Huancayo)
+                   </>
+                 )}
               </Button>
               <p className="text-[10px] text-slate-400">
                 * Recomendado si estás probando la app desde fuera de Huancayo.
@@ -311,7 +320,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           )}
 
         </Card>
-        <p className="text-center text-xs text-slate-400 mt-6">© 2024 EcoAlert Huancayo</p>
+        <p className="text-center text-xs text-slate-400 mt-6">© 2025 EcoAlert Huancayo</p>
       </div>
     </div>
   );

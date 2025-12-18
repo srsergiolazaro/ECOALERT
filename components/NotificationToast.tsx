@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
-import { Notification } from '../types';
+import { AppNotification } from '../types';
 import { Bell, X, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface NotificationToastProps {
-  notification: Notification | null;
+  notification: AppNotification | null;
   onDismiss: () => void;
 }
 

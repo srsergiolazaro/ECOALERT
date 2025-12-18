@@ -46,7 +46,7 @@ export interface Truck {
   lastUpdate: number;
 }
 
-export interface Notification {
+export interface AppNotification {
   id: string;
   title: string;
   message: string;
@@ -66,4 +66,5 @@ export interface EcoTacho {
   descripcion: string;
   beneficios: string[];
   activo: boolean;
+  image?: string;
 }
